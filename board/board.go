@@ -154,7 +154,14 @@ func (b *Board) Size() (int, int) {
 
 // Flag will set cell to flagged
 func (b *Board) Flag(x, y int) *Board {
-	b.layout[y][x].Flagged = true
+	cell := &b.layout[y][x]
+	if cell.Covered {
+		if cell.Flagged {
+			cell.Flagged = false
+		} else {
+			cell.Flagged = true
+		}
+	}
 	return b
 }
 
