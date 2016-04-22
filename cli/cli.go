@@ -185,6 +185,7 @@ func layout(g *gocui.Gui) error {
 }
 
 func Start() {
+	// return
 	g := gocui.NewGui()
 	if err := g.Init(); err != nil {
 		log.Panicln(err)

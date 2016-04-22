@@ -3,8 +3,22 @@ package board
 import (
 	"fmt"
 	"io"
+	"math/rand"
 	"strconv"
+	"time"
 )
+
+const (
+	CellNone = iota
+	CellBomb
+)
+
+const Density float64 = 0.7
+
+var CellTypes = []string{
+	"0",
+	"*",
+}
 
 type Coord [2]int
 
@@ -14,14 +28,28 @@ type Cell struct {
 	Contents string
 }
 
-func genBoard() [][]Cell {
-	return [][]Cell{
-		{Cell{true, false, "0"}, Cell{true, false, "0"}, Cell{true, false, "0"}, Cell{true, false, "0"}, Cell{true, false, "0"}},
-		{Cell{true, false, "0"}, Cell{true, false, "0"}, Cell{true, false, "*"}, Cell{true, false, "0"}, Cell{true, false, "0"}},
-		{Cell{true, false, "*"}, Cell{true, false, "0"}, Cell{true, false, "0"}, Cell{true, false, "0"}, Cell{true, false, "0"}},
-		{Cell{true, false, "0"}, Cell{true, false, "0"}, Cell{true, false, "0"}, Cell{true, false, "*"}, Cell{true, false, "0"}},
-		{Cell{true, false, "0"}, Cell{true, false, "0"}, Cell{true, false, "0"}, Cell{true, false, "*"}, Cell{true, false, "0"}},
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
+
+func genLayout(width, height int) [][]Cell {
+	layout := make([][]Cell, height)
+	for y := 0; y < width; y++ {
+		layout[y] = make([]Cell, width)
+		for x := 0; x < height; x++ {
+			firstNum := rand.Float64()
+
+			var typ int
+			if firstNum >= Density {
+				typ = rand.Intn(len(CellTypes))
+			} else {
+				typ = CellNone
+			}
+
+			layout[y][x] = Cell{true, false, CellTypes[typ]}
+		}
 	}
+	return layout
 }
 
 type Board struct {
@@ -30,7 +58,7 @@ type Board struct {
 }
 
 func NewBoard() *Board {
-	layout := genBoard()
+	layout := genLayout(19, 19)
 
 	b := &Board{layout, false}
 	b.setup()
@@ -109,10 +137,10 @@ func (b *Board) uncover(x, y, filterX, filterY int) {
 	if cell.Contents == "0" {
 		adj := b.getAdjacent(x, y)
 		for _, coord := range adj {
-			if coord[0] == filterX && coord[1] == filterY {
+			if (coord[0] == -1 || coord[0] >= len(b.layout[0])) || (coord[1] == -1 || coord[1] >= len(b.layout)) {
 				continue
 			}
-			if (coord[0] == -1 || coord[0] >= len(b.layout[0])) || (coord[1] == -1 || coord[1] >= len(b.layout)) {
+			if !b.layout[coord[1]][coord[0]].Covered {
 				continue
 			}
 			b.uncover(coord[0], coord[1], x, y)
