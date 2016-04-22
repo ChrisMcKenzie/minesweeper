@@ -10,6 +10,18 @@ import (
 
 var b = board.NewBoard()
 
+func flagItem(g *gocui.Gui, v *gocui.View) error {
+	if v != nil {
+		// bx, _ := b.Size()
+		cx, cy := v.Cursor()
+
+		b.Flag(cx/2, cy)
+		v.Clear()
+		b.Render(v)
+	}
+	return nil
+}
+
 func selectItem(g *gocui.Gui, v *gocui.View) error {
 	if v != nil {
 		// bx, _ := b.Size()
@@ -91,28 +103,6 @@ func cursorUp(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
-func getLine(g *gocui.Gui, v *gocui.View) error {
-	var l string
-	var err error
-
-	_, cy := v.Cursor()
-	if l, err = v.Line(cy); err != nil {
-		l = ""
-	}
-
-	maxX, maxY := g.Size()
-	if v, err := g.SetView("msg", maxX/2-30, maxY/2, maxX/2+30, maxY/2+2); err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		fmt.Fprintln(v, l)
-		if err := g.SetCurrentView("msg"); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func quit(g *gocui.Gui, v *gocui.View) error {
 	return gocui.ErrQuit
 }
@@ -139,6 +129,9 @@ func keybindings(g *gocui.Gui) error {
 	if err := g.SetKeybinding("main", gocui.KeyEnter, gocui.ModNone, selectItem); err != nil {
 		return err
 	}
+	if err := g.SetKeybinding("main", gocui.KeySpace, gocui.ModNone, flagItem); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -146,13 +139,14 @@ func layout(g *gocui.Gui) error {
 	maxX, maxY := g.Size()
 	height := ((maxY / 2) - 10) + 20
 	width := ((maxX / 2) - 20) + 40
-	if v, err := g.SetView("legend", maxX-23, 0, maxX-1, 8); err != nil {
+	if v, err := g.SetView("legend", maxX-23, 0, maxX-1, 9); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
 		v.Title = "Keybindings"
 		fmt.Fprintln(v, "^c: Exit")
 		fmt.Fprintln(v, "^r: Reset")
+		fmt.Fprintln(v, "Space: Flag")
 		fmt.Fprintln(v, "Enter: Select")
 		fmt.Fprintln(v, "<up>: Move Up")
 		fmt.Fprintln(v, "<down>: Move Down")
