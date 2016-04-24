@@ -15,9 +15,8 @@ func flagItem(g *gocui.Gui, v *gocui.View) error {
 		// bx, _ := b.Size()
 		cx, cy := v.Cursor()
 
-		b.Flag(cx/2, cy)
 		v.Clear()
-		b.Render(v)
+		b.Flag(cx/2, cy).Render(v)
 	}
 	return nil
 }
@@ -27,9 +26,8 @@ func selectItem(g *gocui.Gui, v *gocui.View) error {
 		// bx, _ := b.Size()
 		cx, cy := v.Cursor()
 
-		b.Select(cx/2, cy)
 		v.Clear()
-		b.Render(v)
+		b.Select(cx/2, cy).Render(v)
 	}
 	return nil
 }
@@ -139,21 +137,27 @@ func layout(g *gocui.Gui) error {
 	maxX, maxY := g.Size()
 	height := ((maxY / 2) - 10) + 20
 	width := ((maxX / 2) - 20) + 40
+	mainX, mainY := (maxX/2)-20, (maxY/2)-10
+
 	if v, err := g.SetView("legend", maxX-23, 0, maxX-1, 9); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		v.Title = "Keybindings"
-		fmt.Fprintln(v, "^c: Exit")
-		fmt.Fprintln(v, "^r: Reset")
-		fmt.Fprintln(v, "Space: Flag")
-		fmt.Fprintln(v, "Enter: Select")
-		fmt.Fprintln(v, "<up>: Move Up")
-		fmt.Fprintln(v, "<down>: Move Down")
-		fmt.Fprintln(v, "<left>: Move Left")
-		fmt.Fprintln(v, "<right>: Move Right")
+
+		legendLayout(v)
 	}
-	if v, err := g.SetView("main", (maxX/2)-20, (maxY/2)-10, width, height); err != nil {
+
+	statusX, statusY := (maxX/2)-2, mainY-4
+	if v, err := g.SetView("status", statusX, statusY, statusX+5, statusY+2); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		if !b.Over || b.Won {
+			fmt.Fprintf(v, " 😀  ")
+		}
+	}
+
+	if v, err := g.SetView("main", mainX, mainY, width, height); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
@@ -165,6 +169,20 @@ func layout(g *gocui.Gui) error {
 		v.Wrap = true
 		if err := g.SetCurrentView("main"); err != nil {
 			return err
+		}
+
+		if b.Over {
+			if status, err := g.View("status"); err != nil {
+				status.Clear()
+				fmt.Fprintf(status, " 🤕  ")
+			}
+		}
+
+		if b.Won {
+			if status, err := g.View("status"); err != nil {
+				status.Clear()
+				fmt.Fprintf(status, " 😎  ")
+			}
 		}
 
 		cx, cy := v.Cursor()
@@ -190,8 +208,6 @@ func Start() {
 	if err := keybindings(g); err != nil {
 		log.Panicln(err)
 	}
-	g.SelBgColor = gocui.ColorGreen
-	g.SelFgColor = gocui.ColorBlack
 	g.Cursor = true
 
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {

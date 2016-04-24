@@ -17,7 +17,7 @@ const Density float64 = 0.7
 
 var CellTypes = []string{
 	"0",
-	"*",
+	"💣",
 }
 
 type Coord [2]int
@@ -53,14 +53,18 @@ func genLayout(width, height int) [][]Cell {
 }
 
 type Board struct {
-	layout [][]Cell
-	Over   bool
+	layout    [][]Cell
+	winCount  int
+	currCount int
+	Over      bool
+	Won       bool
 }
 
 func NewBoard() *Board {
-	layout := genLayout(19, 19)
+	var x, y = 19, 19
+	layout := genLayout(x, y)
 
-	b := &Board{layout, false}
+	b := &Board{layout, x * y, 0, false, false}
 	b.setup()
 	return b
 }
@@ -89,7 +93,7 @@ func (b *Board) String() string {
 					buf += " ⚑"
 					continue
 				} else if cell.Covered {
-					buf += " #"
+					buf += " ▣"
 					continue
 				}
 			}
@@ -106,15 +110,29 @@ func (b *Board) String() string {
 func (b *Board) setup() {
 	for x, row := range b.layout {
 		for y, cell := range row {
-			if cell.Contents == "*" {
+			if cell.Contents == CellTypes[CellBomb] {
 				adj := b.getAdjacent(x, y)
 				for _, coord := range adj {
-					if (coord[0] == -1 || coord[0] >= len(row)) || (coord[1] == -1 || coord[1] >= len(b.layout)) {
+					if (coord[0] == -1 || coord[0] >= len(row)) ||
+						(coord[1] == -1 || coord[1] >= len(b.layout)) {
 						continue
 					}
 					adjCell := &b.layout[coord[0]][coord[1]]
 					if val, err := strconv.Atoi(adjCell.Contents); err == nil {
-						adjCell.Contents = strconv.Itoa(val + 1)
+						val += 1
+
+						// number := color.New().SprintfFunc()
+						// switch {
+						// case val > 0:
+						// 	number = color.New(color.FgGreen).SprintfFunc()
+						// 	fallthrough
+						// case val >= 2:
+						// 	number = color.New(color.FgYellow).SprintfFunc()
+						// 	fallthrough
+						// case val >= 3:
+						// 	number = color.New(color.FgRed).SprintfFunc()
+						// }
+						adjCell.Contents = fmt.Sprintf("%s", strconv.Itoa(val))
 					}
 				}
 			}
@@ -130,14 +148,18 @@ func (b *Board) uncover(x, y, filterX, filterY int) {
 
 	cell.Covered = false
 
-	if cell.Contents == "*" {
+	if cell.Contents == CellTypes[CellBomb] {
 		b.Over = true
+		return
 	}
+
+	b.winCount++
 
 	if cell.Contents == "0" {
 		adj := b.getAdjacent(x, y)
 		for _, coord := range adj {
-			if (coord[0] == -1 || coord[0] >= len(b.layout[0])) || (coord[1] == -1 || coord[1] >= len(b.layout)) {
+			if (coord[0] == -1 || coord[0] >= len(b.layout[0])) ||
+				(coord[1] == -1 || coord[1] >= len(b.layout)) {
 				continue
 			}
 			if !b.layout[coord[1]][coord[0]].Covered {
@@ -155,12 +177,12 @@ func (b *Board) Size() (int, int) {
 // Flag will set cell to flagged
 func (b *Board) Flag(x, y int) *Board {
 	cell := &b.layout[y][x]
-	if cell.Covered {
-		if cell.Flagged {
-			cell.Flagged = false
-		} else {
-			cell.Flagged = true
-		}
+	if cell.Flagged {
+		cell.Covered = true
+		cell.Flagged = false
+	} else {
+		cell.Covered = false
+		cell.Flagged = true
 	}
 	return b
 }
@@ -168,6 +190,9 @@ func (b *Board) Flag(x, y int) *Board {
 // Select will uncover cell and mutate board state
 func (b *Board) Select(x, y int) *Board {
 	b.uncover(x, y, -1, -1)
+	if b.currCount == b.winCount {
+		b.Won = true
+	}
 	return b
 }
 
